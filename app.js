@@ -765,6 +765,14 @@ const dynamicForm = document.getElementById('dynamic-form');
 const btnReset = document.getElementById('btn-reset');
 const searchInput = document.getElementById('search-input');
 const btnSearchNext = document.getElementById('btn-search-next');
+
+// Novos Elementos de Arquivo
+const btnFileNew = document.getElementById('btn-file-new');
+const btnFileOpen = document.getElementById('btn-file-open');
+const btnFileSave = document.getElementById('btn-file-save');
+const hiddenFileInput = document.getElementById('hidden-file-input');
+const currentFileNameDisplay = document.getElementById('current-file-name');
+
 const btnCopyZpl = document.getElementById('btn-copy-zpl');
 const btnRender = document.getElementById('btn-render');
 const previewImg = document.getElementById('preview-img');
@@ -791,6 +799,137 @@ const layoutsList = document.getElementById('layouts-list');
 const dropzone = document.getElementById('dropzone');
 const dropzoneText = document.getElementById('dropzone-text');
 
+// ==========================================
+// FILE EDITOR LOGIC
+// ==========================================
+let fileHandle = null;
+let currentFileName = null;
+
+function updateFileNameDisplay(name) {
+    currentFileNameDisplay.textContent = name || 'Nenhum arquivo aberto';
+    if (!name) {
+        zplEditor.disabled = true;
+        btnFileSave.disabled = true;
+    } else {
+        zplEditor.disabled = false;
+        btnFileSave.disabled = false;
+    }
+}
+
+btnFileNew.addEventListener('click', async () => {
+    const fileName = prompt("Digite o nome do novo arquivo:", "novo_arquivo.zpl");
+    if (fileName) {
+        fileHandle = null;
+        currentFileName = fileName;
+        zplEditor.value = "";
+        updateFileNameDisplay(currentFileName);
+        parseZPLAndGenerateForm();
+    }
+});
+
+btnFileOpen.addEventListener('click', async () => {
+    // Tenta usar File System Access API se disponível (somente HTTPS/localhost)
+    if (window.showOpenFilePicker) {
+        try {
+            const [handle] = await window.showOpenFilePicker({
+                types: [{ description: 'ZPL Files', accept: { 'text/plain': ['.zpl', '.txt'] } }],
+            });
+            fileHandle = handle;
+            const file = await fileHandle.getFile();
+            currentFileName = file.name;
+            const content = await file.text();
+            zplEditor.value = content;
+            updateFileNameDisplay(currentFileName);
+            parseZPLAndGenerateForm();
+        } catch (err) {
+            console.log('Seleção cancelada ou erro:', err);
+        }
+    } else {
+        // Fallback para HTTP comum
+        hiddenFileInput.click();
+    }
+});
+
+hiddenFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    currentFileName = file.name;
+    fileHandle = null; // No handle in fallback
+    const reader = new FileReader();
+    reader.onload = (re) => {
+        zplEditor.value = re.target.result;
+        updateFileNameDisplay(currentFileName);
+        parseZPLAndGenerateForm();
+        // Reset input so the same file can be selected again
+        hiddenFileInput.value = '';
+    };
+    reader.readAsText(file);
+});
+
+btnFileSave.addEventListener('click', async () => {
+    const content = zplEditor.value;
+    const saveName = currentFileName || 'novo_arquivo.zpl';
+    
+    // Tenta usar File System Access API
+    if (window.showSaveFilePicker) {
+        try {
+            if (!fileHandle) {
+                fileHandle = await window.showSaveFilePicker({
+                    suggestedName: saveName,
+                    types: [{ description: 'ZPL Files', accept: { 'text/plain': ['.zpl', '.txt'] } }],
+                });
+                const file = await fileHandle.getFile();
+                currentFileName = file.name;
+            }
+            const writable = await fileHandle.createWritable();
+            await writable.write(content);
+            await writable.close();
+            updateFileNameDisplay(currentFileName);
+            alert('Arquivo salvo com sucesso!');
+        } catch (err) {
+            console.log('Salvamento cancelado ou erro:', err);
+        }
+    } else {
+        // Fallback: faz o download
+        // O Chrome tentará perguntar onde salvar e pode pré-preencher o nome do arquivo.
+        const blob = new Blob([content], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = saveName;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+});
+
+// ==========================================
+// INIT
+// ==========================================
+function init() {
+    // Inicializa sem arquivo aberto
+    zplEditor.value = "";
+    updateFileNameDisplay(null);
+    parseZPLAndGenerateForm();
+    renderLayoutsList();
+    
+    // Atualiza preview quando há erro de load (fallback seguro)
+    previewImg.addEventListener('error', () => {
+        previewImg.classList.add('hidden');
+        previewPlaceholder.innerHTML = '<p style="color:var(--danger)">Erro ao carregar a imagem renderizada. Verifique sua conexão ou formato do ZPL.</p>';
+        previewPlaceholder.style.display = 'flex';
+    });
+}
+
+// Botão Reset agora carrega o template de exemplo em um "novo arquivo"
+btnReset.addEventListener('click', () => {
+    if (confirm("Isto substituirá o código atual pelo template padrão. Deseja continuar?")) {
+        fileHandle = null;
+        currentFileName = "template_etiqueta.zpl";
+        zplEditor.value = DEFAULT_ZPL;
+        updateFileNameDisplay(currentFileName);
+        parseZPLAndGenerateForm();
+    }
+});
+
 // Elementos de Zoom
 const previewDisplay = document.querySelector('.preview-display');
 const btnZoomIn = document.getElementById('btn-zoom-in');
@@ -801,20 +940,14 @@ const btnToolInspect = document.getElementById('btn-tool-inspect');
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
-    // Carrega código ZPL padrão
-    zplEditor.value = DEFAULT_ZPL;
+    // Inicializa o sistema (Novo init gerencia o estado vazio/desabilitado)
+    init();
     
     // Configura os botões de abas
     setupTabs();
     
-    // Analisa ZPL e gera formulário inicial
-    parseZPLAndGenerateForm();
-    
     // Adiciona escuta a mudanças no editor
     zplEditor.addEventListener('input', parseZPLAndGenerateForm);
-    
-    // Ações dos botões
-    btnReset.addEventListener('click', resetZPL);
     
     // Busca no editor
     searchInput.addEventListener('keydown', (e) => {

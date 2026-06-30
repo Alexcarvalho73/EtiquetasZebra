@@ -206,6 +206,44 @@ body {
     color: var(--warning);
 }
 
+.btn-icon-small {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.btn-icon-small:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+}
+
+.btn-icon-small:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.toolbar-divider {
+    width: 1px;
+    height: 16px;
+    background-color: var(--border-color);
+    margin: 0 4px;
+}
+
+.editor-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 #zpl-editor {
     flex: 1;
     background-color: var(--bg-input);
@@ -218,6 +256,11 @@ body {
     resize: none;
     outline: none;
     min-height: 350px;
+#zpl-editor:disabled {
+    opacity: 0.6;
+    background-color: rgba(15, 23, 42, 0.4);
+    cursor: not-allowed;
+    color: var(--text-muted);
 }
 
 #zpl-editor::selection {
