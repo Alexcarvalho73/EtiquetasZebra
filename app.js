@@ -1520,8 +1520,10 @@ async function initBackgroundLayouts() {
     
     // Configura o input do arquivo e área de dropzone
     if (dropzone && bgFileInput) {
-        dropzone.addEventListener('click', () => {
-            bgFileInput.click();
+        dropzone.addEventListener('click', (e) => {
+            if (e.target !== bgFileInput) {
+                bgFileInput.click();
+            }
         });
         
         bgFileInput.addEventListener('change', handleFileSelect);
