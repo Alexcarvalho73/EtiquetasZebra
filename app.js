@@ -980,7 +980,7 @@ const btnToolPan = document.getElementById('btn-tool-pan');
 const btnToolInspect = document.getElementById('btn-tool-inspect');
 
 // Inicialização
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Inicializa o sistema (Novo init gerencia o estado vazio/desabilitado)
     init();
     
@@ -1010,7 +1010,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Inicializa suporte a layouts pré-impressos ANTES de renderizar
     // para que o estado de fundo seja aplicado já na primeira renderização
-    initBackgroundLayouts();
+    await initBackgroundLayouts();
     
     // Configura controles de Zoom e Pan
     initZoomAndPan();
@@ -1482,16 +1482,19 @@ let activeLayoutId = null;
 let uploadedImageBase64 = null;
 
 // Inicializa a funcionalidade de layouts pré-impressos
-function initBackgroundLayouts() {
-    // Carrega layouts do localStorage
-    const rawLayouts = localStorage.getItem('zpl_bg_layouts');
-    if (rawLayouts) {
-        try {
-            savedLayouts = JSON.parse(rawLayouts);
-        } catch (e) {
-            console.error("Erro ao ler layouts do localStorage:", e);
+async function initBackgroundLayouts() {
+    // Carrega layouts do backend
+    try {
+        const response = await fetch('/api/layouts');
+        const data = await response.json();
+        if (data.success && data.layouts) {
+            savedLayouts = data.layouts;
+        } else {
             savedLayouts = [];
         }
+    } catch (e) {
+        console.error("Erro ao ler layouts do servidor:", e);
+        savedLayouts = [];
     }
     
     // Restaura o layout ativo e estado do toggle
@@ -1597,7 +1600,7 @@ function processFile(file) {
 }
 
 // Salva o novo layout
-function saveNewLayout() {
+async function saveNewLayout() {
     const name = bgNameInput.value.trim();
     const width = parseFloat(bgWidthInput.value);
     const height = parseFloat(bgHeightInput.value);
@@ -1625,7 +1628,25 @@ function saveNewLayout() {
     };
     
     savedLayouts.push(newLayout);
-    localStorage.setItem('zpl_bg_layouts', JSON.stringify(savedLayouts));
+    
+    try {
+        const btnText = btnSaveLayout.innerText;
+        btnSaveLayout.innerText = "Salvando...";
+        btnSaveLayout.disabled = true;
+        
+        await fetch('/api/layouts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ layouts: savedLayouts })
+        });
+        
+        btnSaveLayout.innerText = btnText;
+        btnSaveLayout.disabled = false;
+    } catch(e) {
+        console.error("Erro ao salvar no servidor:", e);
+        alert("Erro ao salvar no servidor, mas o layout foi salvo em memória.");
+        btnSaveLayout.disabled = false;
+    }
     
     // Reseta form
     bgNameInput.value = '';
@@ -1772,7 +1793,16 @@ async function deleteLayout(id) {
     const confirmed = await confirmModal('Deseja realmente excluir este layout?');
     if (confirmed) {
         savedLayouts = savedLayouts.filter(l => l.id !== id);
-        localStorage.setItem('zpl_bg_layouts', JSON.stringify(savedLayouts));
+        
+        try {
+            await fetch('/api/layouts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ layouts: savedLayouts })
+            });
+        } catch(e) {
+            console.error("Erro ao excluir do servidor:", e);
+        }
         
         if (activeLayoutId === id) {
             activeLayoutId = null;

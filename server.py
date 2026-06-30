@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
+import json
 
 app = Flask(__name__)
 # Permitir requisições de diferentes origens (caso necessário)
@@ -9,10 +10,16 @@ CORS(app)
 # Diretório base para armazenar os arquivos ZPL
 BASE_DIR = os.path.dirname(os.path.abspath(__name__))
 ZPL_DIR = os.path.join(BASE_DIR, "arquivos_zpl")
+LAYOUTS_FILE = os.path.join(BASE_DIR, "layouts.json")
 
 # Cria a pasta se não existir
 if not os.path.exists(ZPL_DIR):
     os.makedirs(ZPL_DIR)
+    
+# Cria o arquivo de layouts vazio se não existir
+if not os.path.exists(LAYOUTS_FILE):
+    with open(LAYOUTS_FILE, 'w', encoding='utf-8') as f:
+        json.dump([], f)
 
 @app.route('/api/files', methods=['GET'])
 def list_files():
@@ -60,6 +67,33 @@ def save_file(filename):
             f.write(data['content'])
             
         return jsonify({"success": True, "message": "Arquivo salvo com sucesso!"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/layouts', methods=['GET'])
+def get_layouts():
+    """Retorna todos os layouts pré-impressos salvos."""
+    try:
+        if not os.path.exists(LAYOUTS_FILE):
+            return jsonify({"success": True, "layouts": []})
+        with open(LAYOUTS_FILE, 'r', encoding='utf-8') as f:
+            layouts = json.load(f)
+        return jsonify({"success": True, "layouts": layouts})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/layouts', methods=['POST'])
+def save_layouts():
+    """Salva a lista completa de layouts pré-impressos."""
+    try:
+        data = request.json
+        if data is None or 'layouts' not in data:
+            return jsonify({"success": False, "error": "Layouts não fornecidos."}), 400
+            
+        with open(LAYOUTS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data['layouts'], f, ensure_ascii=False)
+            
+        return jsonify({"success": True, "message": "Layouts salvos com sucesso!"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
