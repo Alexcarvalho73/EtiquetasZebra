@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZPL Label Simulator - Zebra ZT231</title>
+    <link rel="stylesheet" href="index.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-logo">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 18H18V6H6V18Z" stroke-linejoin="round" />
+                <path d="M12 2V6M12 18V22M2 12H6M18 12H22" stroke-linecap="round" />
+                <path d="M9 9H15V15H9V9Z" fill="currentColor" opacity="0.2" />
+            </svg>
+            <h1>ZPL Zebra ZT231 Simulator</h1>
+        </div>
+        <div class="header-badge">Design Premium & Simulação Fiel</div>
+    </header>
+
+    <main class="app-container">
+        <!-- Coluna Esquerda: Editor de Código e Formulário -->
+        <section class="left-panel">
+            <div class="card tabs-card">
+                <div class="tabs-header">
+                    <button class="tab-btn active" data-tab="editor-tab">Código ZPL</button>
+                    <button class="tab-btn" data-tab="form-tab">Campos da Etiqueta (Variáveis)</button>
+                    <button class="tab-btn" data-tab="bg-layouts-tab">Layouts Pré-Impressos</button>
+                </div>
+                
+                <div class="tab-content active" id="editor-tab">
+                    <div class="editor-container">
+                        <div class="editor-header">
+                            <span class="file-info">template_etiqueta.zpl</span>
+                            <div class="editor-actions">
+                                <div class="search-box">
+                                    <input type="text" id="search-input" placeholder="Localizar no código...">
+                                    <button id="btn-search-next" class="btn-icon-small" title="Localizar próximo">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="9 18 15 12 9 6"></polyline>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <button id="btn-reset" class="btn-text" title="Restaurar código padrão">Restaurar Original</button>
+                            </div>
+                        </div>
+                        <textarea id="zpl-editor" spellcheck="false" placeholder="Insira o seu código ZPL aqui..."></textarea>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="form-tab">
+                    <div class="form-instructions">
+                        As variáveis abaixo foram extraídas do código ZPL (tags <code>^FN</code>). Preencha-as para atualizar a etiqueta.
+                    </div>
+                    <div id="dynamic-form" class="form-grid">
+                        <!-- Gerado dinamicamente via JS -->
+                        <div class="no-vars-msg">Nenhuma variável detectada no código ZPL atual.</div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="bg-layouts-tab">
+                    <div class="form-instructions">
+                        Carregue uma imagem do seu rolo de etiquetas pré-impresso. O simulador sobreporá a impressão do ZPL por cima dela.
+                    </div>
+                    
+                    <div class="bg-layout-form">
+                        <div class="form-grid">
+                            <div class="form-field full-width">
+                                <label for="bg-name">Nome do Layout</label>
+                                <input type="text" id="bg-name" placeholder="Ex: Exportação SIF - Fundo Vermelho">
+                            </div>
+                            <div class="form-field">
+                                <label for="bg-width">Largura (cm)</label>
+                                <input type="number" id="bg-width" value="10.2" step="0.1">
+                            </div>
+                            <div class="form-field">
+                                <label for="bg-height">Altura (cm)</label>
+                                <input type="number" id="bg-height" value="15.2" step="0.1">
+                            </div>
+                            <div class="form-field full-width">
+                                <label>Imagem do Layout (PNG/JPG)</label>
+                                <div class="file-dropzone" id="dropzone">
+                                    <span class="dropzone-text" id="dropzone-text">Clique para selecionar imagem</span>
+                                    <input type="file" id="bg-file" accept="image/*" class="hidden-file-input">
+                                </div>
+                            </div>
+                        </div>
+                        <button id="btn-save-layout" class="btn btn-primary" style="margin-top: 14px; width: 100%;">Salvar Layout</button>
+                    </div>
+
+                    <div class="saved-layouts-section">
+                        <h3>Layouts Cadastrados</h3>
+                        <div class="layouts-toggle-container">
+                            <label class="switch-container">
+                                <input type="checkbox" id="toggle-bg-active">
+                                <span class="switch-text">Habilitar Etiqueta Pré-Impressa</span>
+                            </label>
+                        </div>
+                        <div id="layouts-list" class="layouts-grid">
+                            <!-- Gerado dinamicamente via JS -->
+                            <div class="no-layouts-msg">Nenhum layout cadastrado ainda.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Painel de Configurações -->
+            <div class="card settings-card">
+                <h2>Configurações da Impressora / Layout</h2>
+                <div class="settings-grid">
+                    <div class="setting-group">
+                        <label for="setting-dpi">Resolução</label>
+                        <select id="setting-dpi">
+                            <option value="8dpmm">203 DPI (8 dpmm) - Padrão ZT231</option>
+                            <option value="12dpmm">300 DPI (12 dpmm)</option>
+                            <option value="24dpmm">600 DPI (24 dpmm)</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label for="setting-width">Largura (cm)</label>
+                        <input type="number" id="setting-width" value="10.2" step="0.1" min="1" max="30">
+                    </div>
+                    <div class="setting-group">
+                        <label for="setting-height">Altura (cm)</label>
+                        <input type="number" id="setting-height" value="15.2" step="0.1" min="1" max="40">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Coluna Direita: Preview Visual -->
+        <section class="right-panel">
+            <div class="card preview-card">
+                <div class="preview-header">
+                    <h2>Visualização da Etiqueta</h2>
+                    <div class="action-buttons">
+                        <button id="btn-copy-zpl" class="btn btn-secondary">Copiar ZPL Mesclado</button>
+                        <button id="btn-save-jpg" class="btn btn-save" disabled title="Simule a impressão primeiro para habilitar">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle">
+                                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke-linecap="round" stroke-linejoin="round"/>
+                                <polyline points="7 10 12 15 17 10" stroke-linecap="round" stroke-linejoin="round"/>
+                                <line x1="12" y1="15" x2="12" y2="3" stroke-linecap="round"/>
+                            </svg>
+                            Salvar JPG
+                        </button>
+                        <button id="btn-toggle-grid" class="btn btn-grid" disabled title="Simule a impressão para habilitar o grid">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle">
+                                <rect x="3" y="3" width="7" height="7" stroke-linecap="round" stroke-linejoin="round"/>
+                                <rect x="14" y="3" width="7" height="7" stroke-linecap="round" stroke-linejoin="round"/>
+                                <rect x="14" y="14" width="7" height="7" stroke-linecap="round" stroke-linejoin="round"/>
+                                <rect x="3" y="14" width="7" height="7" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            Grid ZPL
+                        </button>
+                        <button id="btn-render" class="btn btn-primary">Simular Impressão</button>
+                    </div>
+                </div>
+                
+                <div class="preview-display">
+                    <div id="loading-spinner" class="spinner-container hidden">
+                        <div class="spinner"></div>
+                        <p>Renderizando etiqueta no Labelary...</p>
+                    </div>
+
+                    <!-- Zoom Toolbar -->
+                    <div class="zoom-toolbar">
+                        <button id="btn-tool-pan" class="btn-icon active" title="Ferramenta Mover">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 11V6a2 2 0 0 0-4 0v4M14 11V4a2 2 0 0 0-4 0v6M10 11V5a2 2 0 0 0-4 0v9M6 14v-2a2 2 0 0 0-4 0v5.5C2 21.6 5.4 23 9 23h3c4 0 7-3 7-7v-5a2 2 0 0 0-4 0v3"></path>
+                            </svg>
+                        </button>
+                        <button id="btn-tool-inspect" class="btn-icon" title="Inspecionar Coordenadas ZPL">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="16"></line>
+                                <line x1="8" y1="12" x2="16" y2="12"></line>
+                            </svg>
+                        </button>
+                        <div class="toolbar-divider"></div>
+                        <button id="btn-zoom-out" class="btn-icon" title="Diminuir Zoom">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                        </button>
+                        <button id="btn-zoom-reset" class="btn-text-zoom" title="Resetar Zoom">100%</button>
+                        <button id="btn-zoom-in" class="btn-icon" title="Aumentar Zoom">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Badge de coordenadas (aparece no hover do grid) -->
+                    <div id="grid-coords" class="grid-coords-badge hidden">X: 0 &nbsp; Y: 0</div>
+
+                    <div id="preview-image-container" class="preview-wrapper">
+                        <!-- Imagem do layout pré-impresso (Fundo) -->
+                        <img id="preview-bg-img" class="background-layout-img hidden" src="" alt="Fundo pré-impresso">
+                        
+                        <!-- Imagem do ZPL (Frente) -->
+                        <img id="preview-img" class="rendered-zpl-img hidden" src="" alt="Aguardando renderização da etiqueta...">
+
+                        <!-- Canvas do Grid ZPL -->
+                        <canvas id="grid-canvas" class="grid-canvas-overlay hidden"></canvas>
+                        
+                        <div id="preview-placeholder">
+                            <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3">
+                                <rect x="3" y="3" width="18" height="18" rx="2" stroke-linecap="round" stroke-linejoin="round" />
+                                <line x1="21" y1="12" x2="9" y2="12" />
+                                <line x1="12" y1="21" x2="12" y2="9" />
+                            </svg>
+                            <p>Clique em <strong>Simular Impressão</strong> para renderizar a etiqueta.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preview-footer">
+                    <div class="info-alert">
+                        <strong>Nota:</strong> Como a impressora Zebra física processa imagens localmente, o logotipo representado pelo comando <code>^XGPIC1</code> no ZPL pode não aparecer se não estiver carregado na memória do simulador. O restante do layout será desenhado com precisão.
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <p>ZPL Zebra ZT231 Simulator - Antigravity Agent &copy; 2026. Feito com amor.</p>
+    </footer>
+
+    <!-- Modal de Confirmação Customizado -->
+    <div id="confirm-modal" class="confirm-modal-overlay hidden">
+        <div class="confirm-modal-box">
+            <div class="confirm-modal-icon">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 9v4M12 17h.01" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                </svg>
+            </div>
+            <h3 id="confirm-modal-title">Confirmar Exclusão</h3>
+            <p id="confirm-modal-msg">Deseja realmente excluir este layout?</p>
+            <div class="confirm-modal-actions">
+                <button id="confirm-modal-cancel" class="btn btn-secondary">Cancelar</button>
+                <button id="confirm-modal-ok" class="btn btn-danger">Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
