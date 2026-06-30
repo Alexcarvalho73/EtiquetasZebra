@@ -762,7 +762,6 @@ let currentValues = {};
 // Elementos DOM
 const zplEditor = document.getElementById('zpl-editor');
 const dynamicForm = document.getElementById('dynamic-form');
-const btnReset = document.getElementById('btn-reset');
 const searchInput = document.getElementById('search-input');
 const btnSearchNext = document.getElementById('btn-search-next');
 
@@ -971,16 +970,6 @@ function init() {
     });
 }
 
-// Botão Reset agora carrega o template de exemplo em um "novo arquivo"
-btnReset.addEventListener('click', () => {
-    if (confirm("Isto substituirá o código atual pelo template padrão. Deseja continuar?")) {
-        fileHandle = null;
-        currentFileName = "template_etiqueta.zpl";
-        zplEditor.value = DEFAULT_ZPL;
-        updateFileNameDisplay(currentFileName);
-        parseZPLAndGenerateForm();
-    }
-});
 
 // Elementos de Zoom
 const previewDisplay = document.querySelector('.preview-display');
