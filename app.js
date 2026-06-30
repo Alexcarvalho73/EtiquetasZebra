@@ -802,8 +802,13 @@ const dropzoneText = document.getElementById('dropzone-text');
 // ==========================================
 // FILE EDITOR LOGIC
 // ==========================================
-let fileHandle = null;
 let currentFileName = null;
+
+// Modal elements
+const fileModal = document.getElementById('file-modal');
+const btnCloseModal = document.getElementById('btn-close-modal');
+const fileListLoading = document.getElementById('file-list-loading');
+const fileListContainer = document.getElementById('file-list-container');
 
 function updateFileNameDisplay(name) {
     currentFileNameDisplay.textContent = name || 'Nenhum arquivo aberto';
@@ -816,89 +821,136 @@ function updateFileNameDisplay(name) {
     }
 }
 
-btnFileNew.addEventListener('click', async () => {
-    const fileName = prompt("Digite o nome do novo arquivo:", "novo_arquivo.zpl");
+// NOVO ARQUIVO
+btnFileNew.addEventListener('click', () => {
+    const fileName = prompt("Digite o nome do novo arquivo (ex: minha_etiqueta.zpl):", "novo_arquivo.zpl");
     if (fileName) {
-        fileHandle = null;
-        currentFileName = fileName;
+        // Adiciona .zpl se não tiver extensão
+        let finalName = fileName.trim();
+        if (!finalName.toLowerCase().endsWith('.zpl') && !finalName.toLowerCase().endsWith('.txt')) {
+            finalName += '.zpl';
+        }
+        currentFileName = finalName;
         zplEditor.value = "";
         updateFileNameDisplay(currentFileName);
         parseZPLAndGenerateForm();
     }
 });
 
-btnFileOpen.addEventListener('click', async () => {
-    // Tenta usar File System Access API se disponível (somente HTTPS/localhost)
-    if (window.showOpenFilePicker) {
-        try {
-            const [handle] = await window.showOpenFilePicker({
-                types: [{ description: 'ZPL Files', accept: { 'text/plain': ['.zpl', '.txt'] } }],
-            });
-            fileHandle = handle;
-            const file = await fileHandle.getFile();
-            currentFileName = file.name;
-            const content = await file.text();
-            zplEditor.value = content;
+// ABRIR ARQUIVO
+btnFileOpen.addEventListener('click', () => {
+    // Abre o Modal
+    fileModal.classList.remove('hidden');
+    fileListLoading.classList.remove('hidden');
+    fileListContainer.classList.add('hidden');
+    
+    // Busca arquivos no servidor
+    fetch('/api/files')
+        .then(response => {
+            if (!response.ok) throw new Error('Falha ao conectar com o servidor');
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success) throw new Error(data.error);
+            
+            fileListContainer.innerHTML = '';
+            
+            if (data.files.length === 0) {
+                fileListContainer.innerHTML = '<p style="color:var(--text-secondary); text-align:center;">Nenhum arquivo salvo no servidor.</p>';
+            } else {
+                data.files.forEach(filename => {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    item.innerHTML = `
+                        <div class="file-item-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                        </div>
+                        <div class="file-item-name">${filename}</div>
+                    `;
+                    item.addEventListener('click', () => loadFileFromServer(filename));
+                    fileListContainer.appendChild(item);
+                });
+            }
+            
+            fileListLoading.classList.add('hidden');
+            fileListContainer.classList.remove('hidden');
+        })
+        .catch(error => {
+            fileListLoading.innerHTML = `<span style="color:var(--danger)">Erro: ${error.message}</span>`;
+            console.error(error);
+        });
+});
+
+// FECHAR MODAL
+btnCloseModal.addEventListener('click', () => {
+    fileModal.classList.add('hidden');
+});
+
+// LOAD FILE
+function loadFileFromServer(filename) {
+    fileListLoading.classList.remove('hidden');
+    fileListLoading.textContent = "Carregando...";
+    fileListContainer.classList.add('hidden');
+    
+    fetch(`/api/files/${encodeURIComponent(filename)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) throw new Error(data.error);
+            
+            currentFileName = filename;
+            zplEditor.value = data.content;
             updateFileNameDisplay(currentFileName);
             parseZPLAndGenerateForm();
-        } catch (err) {
-            console.log('Seleção cancelada ou erro:', err);
-        }
-    } else {
-        // Fallback para HTTP comum
-        hiddenFileInput.click();
-    }
-});
+            fileModal.classList.add('hidden');
+        })
+        .catch(error => {
+            alert(`Erro ao carregar arquivo: ${error.message}`);
+            fileModal.classList.add('hidden');
+        });
+}
 
-hiddenFileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    currentFileName = file.name;
-    fileHandle = null; // No handle in fallback
-    const reader = new FileReader();
-    reader.onload = (re) => {
-        zplEditor.value = re.target.result;
-        updateFileNameDisplay(currentFileName);
-        parseZPLAndGenerateForm();
-        // Reset input so the same file can be selected again
-        hiddenFileInput.value = '';
-    };
-    reader.readAsText(file);
-});
-
-btnFileSave.addEventListener('click', async () => {
-    const content = zplEditor.value;
-    const saveName = currentFileName || 'novo_arquivo.zpl';
+// SALVAR ARQUIVO
+btnFileSave.addEventListener('click', () => {
+    if (!currentFileName) return;
     
-    // Tenta usar File System Access API
-    if (window.showSaveFilePicker) {
-        try {
-            if (!fileHandle) {
-                fileHandle = await window.showSaveFilePicker({
-                    suggestedName: saveName,
-                    types: [{ description: 'ZPL Files', accept: { 'text/plain': ['.zpl', '.txt'] } }],
-                });
-                const file = await fileHandle.getFile();
-                currentFileName = file.name;
-            }
-            const writable = await fileHandle.createWritable();
-            await writable.write(content);
-            await writable.close();
-            updateFileNameDisplay(currentFileName);
-            alert('Arquivo salvo com sucesso!');
-        } catch (err) {
-            console.log('Salvamento cancelado ou erro:', err);
-        }
-    } else {
-        // Fallback: faz o download
-        // O Chrome tentará perguntar onde salvar e pode pré-preencher o nome do arquivo.
-        const blob = new Blob([content], { type: 'text/plain' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = saveName;
-        a.click();
-        URL.revokeObjectURL(a.href);
-    }
+    const content = zplEditor.value;
+    const btnText = btnFileSave.innerHTML;
+    
+    // Mostra estado de carregamento
+    btnFileSave.innerHTML = "Salvando...";
+    btnFileSave.disabled = true;
+    
+    fetch(`/api/files/${encodeURIComponent(currentFileName)}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content: content })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) throw new Error(data.error);
+        
+        // Sucesso visual temporário
+        btnFileSave.innerHTML = `
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#10b981" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            Salvo
+        `;
+        setTimeout(() => {
+            btnFileSave.innerHTML = btnText;
+            btnFileSave.disabled = false;
+        }, 2000);
+    })
+    .catch(error => {
+        alert(`Erro ao salvar arquivo: ${error.message}`);
+        btnFileSave.innerHTML = btnText;
+        btnFileSave.disabled = false;
+    });
 });
 
 // ==========================================

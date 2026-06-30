@@ -274,6 +274,30 @@
         </div>
     </div>
 
+    <!-- Modal de Arquivos do Servidor -->
+    <div id="file-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Arquivos no Servidor</h3>
+                <button id="btn-close-modal" class="btn-icon-small">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="file-list-loading" class="loading-state">
+                    Carregando arquivos...
+                </div>
+                <div id="file-list-container" class="file-list hidden">
+                    <!-- Arquivos inseridos via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script da Aplicação -->
     <script src="app.js"></script>
 </body>
 </html>
