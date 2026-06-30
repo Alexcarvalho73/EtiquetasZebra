@@ -1143,8 +1143,17 @@ function copyMergedZPL() {
 
 // Envia para o Labelary para renderizar a etiqueta
 function renderLabel() {
+    if (!zplEditor.value.trim()) {
+        previewImg.classList.add('hidden');
+        previewPlaceholder.innerHTML = '<p style="color:var(--text-secondary);">Nenhum código ZPL para renderizar. Abra ou crie um arquivo.</p>';
+        previewPlaceholder.classList.remove('hidden');
+        previewPlaceholder.style.display = 'flex';
+        loadingSpinner.classList.add('hidden');
+        return;
+    }
+
     const dpi = settingDpi.value;
-    // Garante que decimais usem ponto em vez de vírgula na URL da API
+    // Garante que decimais usem ponto em vez de vírgula na API
     const widthCm = parseFloat(settingWidth.value.toString().replace(',', '.')) || 10.2;
     const heightCm = parseFloat(settingHeight.value.toString().replace(',', '.')) || 15.2;
     // Labelary usa polegadas: converte de centímetros
